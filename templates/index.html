@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashfy - Dashboard and Data Analysis</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            padding: 20px;
+        }
+    
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+    
+        .container {
+            max-width: 800px;
+            margin: auto;
+            background-color: #fff;
+            padding: 30px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            border-radius: 5px;
+        }
+    
+        .file-upload {
+            margin-bottom: 20px;
+        }
+    
+        .upload-btn {
+            background-color: #3498db;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+    
+        .upload-btn:hover {
+            background-color: #2980b9;
+        }
+    
+        .loading {
+            display: none;
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+    
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    
+        .question-form {
+            margin-bottom: 20px;
+        }
+    
+        .question-input {
+            width: calc(100% - 80px);
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px 0 0 5px;
+            font-size: 16px;
+        }
+    
+        .question-btn {
+            width: 80px;
+            background-color: #2ecc71;
+            color: #fff;
+            border: none;
+            padding: 10px;
+            cursor: pointer;
+            border-radius: 0 5px 5px 0;
+            transition: background-color 0.3s ease;
+        }
+    
+        .question-btn:hover {
+            background-color: #27ae60;
+        }
+    
+        .answer {
+            margin-top: 20px;
+        }
+    
+        .answer p {
+            background-color: #f9f9f9;
+            padding: 10px;
+            border-left: 4px solid #3498db;
+        }
+    
+        .data-head {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            overflow-x: auto; /* Ensure horizontal scrolling */
+        }
+    
+        .data-head table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+    
+        .data-head th, .data-head td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+    
+        .data-head th {
+            background-color: #f2f2f2;
+        }
+    </style>
+    
+</head>
+<body>
+    <div class="container">
+        <h1>Dashfy - Dashboard and Data Analysis</h1>
+        <button id="dashboard-btn" class="dashboard-btn btn btn-primary">Generate Dashboard</button>
+        <div class="file-upload">
+            <form id="upload-form" action="/upload" method="post" enctype="multipart/form-data">
+                <input type="file" name="file" class="form-control-file">
+                <button type="submit" id="upload-btn" class="upload-btn btn btn-primary">Upload</button>
+            </form>
+            <div class="loading"></div>
+        </div>
+        <div id="data-head" class="data-head"></div>
+        <div id="upload-response" class="answer"></div>
+        <div id="ask-section">
+            <form id="ask-form" class="question-form" action="/ask" method="post">
+                <input type="text" id="question" name="question" class="question-input" placeholder="Ask a question about the data">
+                <button type="submit" class="question-btn">Ask</button>
+            </form>
+            <div class="loading"></div>
+            <div id="ask-response" class="answer"></div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            $('#ask-form').hide();
+            $('#dashboard-btn').hide(); // Initially hide the Generate Dashboard button
+            
+            $('#upload-form').on('submit', function(e) {
+                e.preventDefault();
+                var formData = new FormData(this);
+                $('.loading').show();
+                $.ajax({
+                    url: '/upload',
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function(response) {
+                        $('.loading').hide();
+                        if (response.status === "success") {
+                            $('#data-head').html(response.data_head);
+                            $('#upload-response').html('<img src="static/dashboard.png" alt="Dashboard" class="img-fluid">');
+                            $('#ask-form').show();
+                            $('#upload-btn').text('Reupload'); // Change button text to Reupload
+                            $('#dashboard-btn').show(); // Show Generate Dashboard button
+                        } else {
+                            $('#upload-response').text('Failed to generate dashboard.');
+                        }
+                    },
+                    error: function() {
+                        $('.loading').hide();
+                        $('#upload-response').text('Failed to generate dashboard.');
+                    }
+                });
+            });
+
+            $('#ask-form').on('submit', function(e) {
+                e.preventDefault();
+                var question = $('#question').val();
+                $('#question').val(''); // Clear input field after submitting question
+                $('.loading').show();
+                $.ajax({
+                    url: '/ask',
+                    type: 'POST',
+                    data: { question: question },
+                    success: function(data) {
+                        $('.loading').hide();
+                        if (data.error) {
+                            $('#ask-response').prepend('<p>Error: ' + data.error + '</p>');
+                        } else {
+                            $('#ask-response').prepend('<p>Q: ' + data.question + '</p><p>A: ' + data.answer + '</p>');
+                        }
+                    },
+                    error: function() {
+                        $('.loading').hide();
+                        $('#ask-response').prepend('<p>Error: Failed to get answer.</p>');
+                    }
+                });
+            });
+
+            $('#dashboard-btn').on('click', function() {
+                $.ajax({
+                    url: '/generate_dashboard',
+                    type: 'GET',
+                    success: function(response) {
+                        $('#upload-response').html('<img src="static/dashboard.png" alt="Dashboard" class="img-fluid">');
+                    },
+                    error: function() {
+                        $('#upload-response').text('Failed to generate dashboard.');
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
